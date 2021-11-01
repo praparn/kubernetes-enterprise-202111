@@ -1,0 +1,293 @@
+Instruction for Backup & Restore Operateion:
+===================================================================================================================================
+Part0: Install Velero (Heptio Ark) on Kubernetes and client utility
+===================================================================================================================================
+0. (Shotnote) Check sheet and fill-in form:
+====================================================
+S3 Bucket Name: xxxxxxxxx
+Access Key: xxxxxxxxxx
+Secret Key: xxxxxxxxxx
+====================================================
+
+1. (Master1) Install client utility by command:
+  cd ~
+	curl https://github.com/vmware-tanzu/velero/releases/download/v1.7.0/velero-v1.7.0-linux-amd64.tar.gz -L > ~/velero.tar.gz
+  tar -xzvf ~/velero.tar.gz
+  chmod +x ~/velero-v1.7.0-linux-amd64/velero && sudo cp ~/velero-v1.7.0-linux-amd64/velero /usr/local/bin 
+  velero -help
+
+2. (Master1) Install aws cli and test s3 access by command:
+  sudo apt install -y awscli
+  aws configure ==> input (AccessKey, SecretKey, Regions(ap-southeast-1), Output (JSON) )
+  aws s3api list-objects --bucket <S3 Bucket>
+
+
+3. (Master1) Prepare credential file by command:
+  sed -i -e "s/<AWS_ACCESS_KEY_ID>/<AWS_ACCESS_KEY_ID>/g" ~/kubernetes-enterprise-202111/Workshop_1_3_BackupandRestore/velero-cred
+  sed -i -e "s/<AWS_SECRET_ACCESS_KEY>/<AWS_SECRET_ACCESS_KEY>/g" ~/kubernetes-enterprise-202111/Workshop_1_3_BackupandRestore/velero-cred
+  more ~/kubernetes-enterprise-202111/Workshop_1_3_BackupandRestore/velero-cred
+
+4. (Master1) Install
+  velero install --provider aws --plugins velero/velero-plugin-for-aws:v1.0.0 --secret-file ~/kubernetes-enterprise-202111/Workshop_1_3_BackupandRestore/velero-cred --bucket <S3 Bucket Name> --backup-location-config region=ap-southeast-1 --snapshot-location-config region=ap-southeast-1 
+-----------------------------------------------------------------------------------------------------------------------------------
+Example output:
+CustomResourceDefinition/backups.velero.io: attempting to create resource
+CustomResourceDefinition/backups.velero.io: attempting to create resource client
+CustomResourceDefinition/backups.velero.io: created
+CustomResourceDefinition/backupstoragelocations.velero.io: attempting to create resource
+CustomResourceDefinition/backupstoragelocations.velero.io: attempting to create resource client
+CustomResourceDefinition/backupstoragelocations.velero.io: created
+CustomResourceDefinition/deletebackuprequests.velero.io: attempting to create resource
+CustomResourceDefinition/deletebackuprequests.velero.io: attempting to create resource client
+CustomResourceDefinition/deletebackuprequests.velero.io: created
+CustomResourceDefinition/downloadrequests.velero.io: attempting to create resource
+CustomResourceDefinition/downloadrequests.velero.io: attempting to create resource client
+CustomResourceDefinition/downloadrequests.velero.io: created
+CustomResourceDefinition/podvolumebackups.velero.io: attempting to create resource
+CustomResourceDefinition/podvolumebackups.velero.io: attempting to create resource client
+CustomResourceDefinition/podvolumebackups.velero.io: created
+CustomResourceDefinition/podvolumerestores.velero.io: attempting to create resource
+CustomResourceDefinition/podvolumerestores.velero.io: attempting to create resource client
+CustomResourceDefinition/podvolumerestores.velero.io: created
+CustomResourceDefinition/resticrepositories.velero.io: attempting to create resource
+CustomResourceDefinition/resticrepositories.velero.io: attempting to create resource client
+CustomResourceDefinition/resticrepositories.velero.io: created
+CustomResourceDefinition/restores.velero.io: attempting to create resource
+CustomResourceDefinition/restores.velero.io: attempting to create resource client
+CustomResourceDefinition/restores.velero.io: created
+CustomResourceDefinition/schedules.velero.io: attempting to create resource
+CustomResourceDefinition/schedules.velero.io: attempting to create resource client
+CustomResourceDefinition/schedules.velero.io: created
+CustomResourceDefinition/serverstatusrequests.velero.io: attempting to create resource
+CustomResourceDefinition/serverstatusrequests.velero.io: attempting to create resource client
+CustomResourceDefinition/serverstatusrequests.velero.io: created
+CustomResourceDefinition/volumesnapshotlocations.velero.io: attempting to create resource
+CustomResourceDefinition/volumesnapshotlocations.velero.io: attempting to create resource client
+CustomResourceDefinition/volumesnapshotlocations.velero.io: created
+Waiting for resources to be ready in cluster...
+Namespace/velero: attempting to create resource
+Namespace/velero: attempting to create resource client
+Namespace/velero: created
+ClusterRoleBinding/velero: attempting to create resource
+ClusterRoleBinding/velero: attempting to create resource client
+ClusterRoleBinding/velero: created
+ServiceAccount/velero: attempting to create resource
+ServiceAccount/velero: attempting to create resource client
+ServiceAccount/velero: created
+Secret/cloud-credentials: attempting to create resource
+Secret/cloud-credentials: attempting to create resource client
+Secret/cloud-credentials: created
+BackupStorageLocation/default: attempting to create resource
+BackupStorageLocation/default: attempting to create resource client
+BackupStorageLocation/default: created
+VolumeSnapshotLocation/default: attempting to create resource
+VolumeSnapshotLocation/default: attempting to create resource client
+VolumeSnapshotLocation/default: created
+Deployment/velero: attempting to create resource
+Deployment/velero: attempting to create resource client
+Deployment/velero: created
+Velero is installed! ⛵ Use 'kubectl logs deployment/velero -n velero' to view the status.
+-----------------------------------------------------------------------------------------------------------------------------------
+
+5. (Master1) Verity velero installation by command: 
+watch kubectl logs deployment/velero -n velero
+
+*Remark: Case roll back: velero uninstall
+
+===================================================================================================================================
+Part1: Deploy application and create backup operation
+===================================================================================================================================
+1. Create Application Set by command:
+	kubectl create -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_3_BackupandRestore/management-ui-set.yml
+  kubectl create -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_3_BackupandRestore/backend-set.yml
+	kubectl create -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_3_BackupandRestore/frontend-set.yml
+	kubectl create -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_3_BackupandRestore/client-set.yml
+
+
+2. Check Namespace / Service / Pods 
+	kubectl get all -n=management-ui 
+	kubectl get all -n=stars
+	kubectl get all -n=client
+
+
+3. Add hosts and test open browser for check application:
+  ping managementui.kuberneteslabthailand.com  (Expect PublicIP of LoadBalance)
+	http://managementui.kuberneteslabthailand.com
+
+
+4. Start backup all namespace exclude default and velero itself by command:
+  velero backup create backup-entire01 --exclude-namespaces velero,default
+
+
+5. Check backup result by command:
+  velero backup describe backup-entire01  (summary)
+  velero backup logs backup-entire01      (detail)
+
+
+6. Start backup specific namespace by command:
+  velero backup create backup-specific-namespace01 --include-namespaces management-ui,stars,client
+
+
+7. Check backup result by command:
+  velero backup describe backup-specific-namespace01  (summary)
+  velero backup logs backup-specific-namespace01      (detail)
+
+
+8. Check object backup on S3 by command:
+  aws s3api list-objects --bucket <S3 Bucket>
+-----------------------------------------------------------------------------------------------------------------------------------
+Example output:
+{
+    "Contents": [
+        {
+            "Key": "backups/backup-entire01/backup-entire01-csi-volumesnapshotcontents.json.gz",
+            "LastModified": "2021-10-13T10:39:31.000Z",
+            "ETag": "\"6848cb8d5f3669ef603f87e48ece8567\"",
+            "Size": 29,
+            "StorageClass": "STANDARD"
+        },
+        {
+            "Key": "backups/backup-entire01/backup-entire01-csi-volumesnapshots.json.gz",
+            "LastModified": "2021-10-13T10:39:31.000Z",
+            "ETag": "\"6848cb8d5f3669ef603f87e48ece8567\"",
+            "Size": 29,
+            "StorageClass": "STANDARD"
+        },
+        {
+            "Key": "backups/backup-entire01/backup-entire01-logs.gz",
+            "LastModified": "2021-10-13T10:39:30.000Z",
+            "ETag": "\"5fa4829fbef2c6d19b7562f73737996e\"",
+            "Size": 14319,
+            "StorageClass": "STANDARD"
+        },
+        {
+            "Key": "backups/backup-entire01/backup-entire01-podvolumebackups.json.gz",
+            "LastModified": "2021-10-13T10:39:31.000Z",
+            "ETag": "\"6848cb8d5f3669ef603f87e48ece8567\"",
+            "Size": 29,
+            "StorageClass": "STANDARD"
+        },
+        {
+            "Key": "backups/backup-entire01/backup-entire01-resource-list.json.gz",
+            "LastModified": "2021-10-13T10:39:31.000Z",
+            "ETag": "\"91fcc6be7110eee55a5fdfa846b07864\"",
+            "Size": 2653,
+            "StorageClass": "STANDARD"
+        },
+        {
+            "Key": "backups/backup-entire01/backup-entire01-volumesnapshots.json.gz",
+            "LastModified": "2021-10-13T10:39:31.000Z",
+            "ETag": "\"6848cb8d5f3669ef603f87e48ece8567\"",
+            "Size": 29,
+            "StorageClass": "STANDARD"
+        },
+        {
+            "Key": "backups/backup-entire01/backup-entire01.tar.gz",
+            "LastModified": "2021-10-13T10:39:30.000Z",
+            "ETag": "\"cfe582147d7f6790801bf27e39386745\"",
+            "Size": 147018,
+            "StorageClass": "STANDARD"
+        },
+        {
+            "Key": "backups/backup-entire01/velero-backup.json",
+            "LastModified": "2021-10-13T10:39:30.000Z",
+            "ETag": "\"ef41f0236ed61d69761694777011ee59\"",
+            "Size": 2224,
+            "StorageClass": "STANDARD"
+        }
+    ]
+-----------------------------------------------------------------------------------------------------------------------------------
+
+  9. Test destroy client namespaceby command:
+	kubectl delete -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_3_BackupandRestore/client-set.yml
+
+  10. Check result on web browser:
+  http://managementui.kuberneteslabthailand.com
+
+
+  11. Check backup status and Restore namespace client by command:
+  velero backup get
+  velero restore create --from-backup backup-specific-namespace01 --include-namespaces client
+
+
+  12. Check restore result by command:
+  velero restore describe backup-specific-namespace01-<xxxxx>  (summary)
+  velero restore logs backup-specific-namespace01-<xxxxx>      (detail)
+
+
+  13. Check result on web browser:
+  http://managementui.kuberneteslabthailand.com
+
+
+  14. Test destroy all app namespace by command:
+	kubectl delete -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_3_BackupandRestore/management-ui-set.yml
+  kubectl delete -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_3_BackupandRestore/frontend-set.yml
+  kubectl delete -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_3_BackupandRestore/backend-set.yml
+	kubectl delete -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_3_BackupandRestore/client-set.yml
+
+
+  15. Check result on web browser:
+  http://managementui.kuberneteslabthailand.com
+
+
+  16. Check backup status and Restore all appliction namespace from entire system by command:
+  velero backup get
+  velero restore create --from-backup backup-entire01 --include-namespaces management-ui,stars,client
+
+
+  17. Check restore result by command:
+  velero restore describe backup-entire01-<xxxxx>  (summary)
+  velero restore logs backup-entire01-<xxxxx>      (detail)
+
+
+  18. Check Namespace / Service / Pods 
+	kubectl get all -n=management-ui 
+	kubectl get all -n=stars
+	kubectl get all -n=client
+
+
+  19. Check result on web browser:
+  http://managementui.kuberneteslabthailand.com
+
+
+  20. Delete backup set entire by command:
+  velero backup delete backup-entire01 --confirm
+  velero backup delete backup-specific-namespace01 --confirm
+  aws s3api list-objects --bucket <S3 Bucket>
+
+
+  21. Create backup schedule for start backup every 5 min by command:
+  velero schedule create backup-entire01-schedule --exclude-namespaces velero,default --schedule="*/5 * * * *"
+  velero schedule get
+  velero schedule describe backup-entire01-schedule
+
+  22. Wait 5-10 min and check backup result by command:
+  velero backup get
+  velero backup describe backup-entire01-schedule-xxxx
+
+  23. Test destroy and restore data from previous backup by command:
+  kubectl delete -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_3_BackupandRestore/management-ui-set.yml
+  kubectl delete -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_3_BackupandRestore/frontend-set.yml
+  kubectl delete -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_3_BackupandRestore/backend-set.yml
+	kubectl delete -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_3_BackupandRestore/client-set.yml
+  velero backup get
+  velero restore create --from-backup backup-entire01-schedule-XXXXX --include-namespaces management-ui,stars,client
+  velero restore describe backup-entire01-schedule-XXXXX
+
+  
+  24. Check Namespace / Service / Pods 
+	kubectl get all -n=management-ui 
+	kubectl get all -n=stars
+	kubectl get all -n=client
+
+
+  25. Check result on web browser:
+  http://managementui.kuberneteslabthailand.com
+
+
+  26. Cleanup Schedule Backup and All Backup Set by command:
+  velero schedule delete backup-entire01-schedule --confirm
+  velero schedule get
+  velero backup delete --all --confirm
+  velero backup get
+  aws s3api list-objects --bucket <S3 Bucket>

@@ -1,0 +1,70 @@
+Instruction for Dashboard Operation:
+===================================================================================================================================
+Part0: Install Kubectl and GUI mode on client:
+===================================================================================================================================
+1. (LB/Client) Install kubectl binary by command:
+sudo su -
+curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | tee /etc/apt/sources.list.d/kubernetes.list
+apt-get update && apt-get install -y kubectl=1.22.1-00 && apt-mark hold kubectl
+exit
+
+
+2. (LB/Client) Copy kubeconfig from Master1 by command:
+(LB/Client): cd ~ && mkdir .kube
+(Master1): kubectl config view --minify --raw    ==> record
+(LB/Client): vi ~/.kube/config
+
+
+3. (LB/Client) Test kubectl by command:
+kubectl get nodes
+
+
+4. (LB/Client) Initial vncserver configuration by command:
+   vncpasswd
+      password:   ==> input "P@ssw0rd" on twice time ==> "n" for view-only password
+
+
+5. (LB/Client) Download vncconfiguration and apply by command:
+   curl https://raw.githubusercontent.com/praparn/sourcesetup/master/xstartup > /home/ubuntu/.vnc/xstartup
+
+
+6. (LB/Client)Exist the ssh and Start VNCServer again with remote option
+   vncserver -kill :1
+   vncserver -localhost no -geometry 1600x900 :1
+
+
+7. (LB/Client) Test open ultravnc client to connect (Setup option or high resolution of picture)
+   <public ip address>:1
+   *Remark: accept unencrypted connection and input password to "P@ssw0rd"
+
+
+8. (LB/Client) Open terminal by menu: Application ==> System Tools ==> Xterm
+   *Remark: Please disable lockscreen feature on menu "Settings" ==> "Privacy" ==> "Screen Lock" ==> Disable "Automatic Screen Lock", "Blank Screen Delay (Never)"
+
+
+===================================================================================================================================
+Part1: Operate Kubedashboard
+===================================================================================================================================
+1. (LB/Client)(CLI) Download Lens IDE from URL and install by command:
+	curl https://lens-binaries.s3-eu-west-1.amazonaws.com/ide/Lens-5.2.5-latest.20211001.2.amd64.deb > ~/ide.deb
+  sudo apt install ~/ide.deb
+
+
+===================================================================================================================================
+Part2: Install pre-requiste and Lens IDE
+===================================================================================================================================
+1. (LB/Client)(CLI) Download Lens IDE from URL and install by command:
+	curl https://lens-binaries.s3-eu-west-1.amazonaws.com/ide/Lens-5.2.5-latest.20211001.2.amd64.deb > ~/ide.deb
+  sudo apt install ~/ide.deb
+
+2. (LB/Client)(GUI) Run Lens via gui mode by command:
+	/opt/Lens/lens
+
+3. (LB/Client)(GUI) Add Cluster with menu:
+  - Select browser cluster from catalog
+  - Menu (Catalog ==> Catagories ==> Cluster) ==> Select cluster with naming: kubernetes-admin@xxxxx
+  - Select : ==> Connect
+
+
+4. (LB/Client)(GUI)Explorer Lens with menu:

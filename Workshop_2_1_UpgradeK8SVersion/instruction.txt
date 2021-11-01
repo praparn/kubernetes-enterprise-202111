@@ -1,0 +1,222 @@
+Instruction for Upgrade Kubernetes Version 1.22.1 to 1.22.2:
+===================================================================================================================================
+Part0: Check Release and Detail for upgrade
+===================================================================================================================================
+0. (Local) Check detail of change on release note url:
+  https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.22.md
+
+
+1. (Master1) Check binary version to upgrade of kubeadm kubectl and kubelet by command:
+  sudo apt update
+  apt-cache madison kubeadm | grep 1.22     (record version of 1.22.2)
+  apt-cache madison kubectl | grep 1.22     (record version of 1.22.2)
+  apt-cache madison kubelet | grep 1.22     (record version of 1.22.2)
+
+
+===================================================================================================================================
+Part1: Upgade Control Plane
+===================================================================================================================================
+1. (Master1) Update kubeadm binary version from 1.22.1 to 1.22.2 by command:
+sudo su -
+apt-mark unhold kubeadm && \
+apt-get update && apt-get install -y kubeadm=1.22.2-00 && \
+apt-mark hold kubeadm
+kubeadm version
+exit
+
+
+2. (Master1) Verification existing cluster and effect to upgrade plan by command:
+sudo kubeadm upgrade plan
+*Remark: During upgrade process kubernetes will automatic renewal certificate also.
+----------------------------------------------------------------------------------------------------------------------------------
+Example output:
+[upgrade/config] Making sure the configuration is correct:
+[upgrade/config] Reading configuration from the cluster...
+[upgrade/config] FYI: You can look at this config file with 'kubectl -n kube-system get cm kubeadm-config -o yaml'
+[preflight] Running pre-flight checks.
+[upgrade] Running cluster health checks
+[upgrade] Fetching available versions to upgrade to
+[upgrade/versions] Cluster version: v1.22.1
+[upgrade/versions] kubeadm version: v1.22.2
+[upgrade/versions] Target version: v1.22.2
+[upgrade/versions] Latest version in the v1.22 series: v1.22.2
+
+Components that must be upgraded manually after you have upgraded the control plane with 'kubeadm upgrade apply':
+COMPONENT   CURRENT       TARGET
+kubelet     6 x v1.22.1   v1.22.2
+
+Upgrade to the latest version in the v1.22 series:
+
+COMPONENT                 CURRENT   TARGET
+kube-apiserver            v1.22.1   v1.22.2
+kube-controller-manager   v1.22.1   v1.22.2
+kube-scheduler            v1.22.1   v1.22.2
+kube-proxy                v1.22.1   v1.22.2
+CoreDNS                   v1.8.4    v1.8.4
+etcd                      3.5.0-0   3.5.0-0
+
+You can now apply the upgrade by executing the following command:
+
+	kubeadm upgrade apply v1.22.2
+
+_____________________________________________________________________
+
+
+The table below shows the current state of component configs as understood by this version of kubeadm.
+Configs that have a "yes" mark in the "MANUAL UPGRADE REQUIRED" column require manual config upgrade or
+resetting to kubeadm defaults before a successful upgrade can be performed. The version to manually
+upgrade to is denoted in the "PREFERRED VERSION" column.
+
+API GROUP                 CURRENT VERSION   PREFERRED VERSION   MANUAL UPGRADE REQUIRED
+kubeproxy.config.k8s.io   v1alpha1          v1alpha1            no
+kubelet.config.k8s.io     v1beta1           v1beta1             no
+_____________________________________________________________________
+----------------------------------------------------------------------------------------------------------------------------------
+
+
+3. (Master1) Start upgrade Kubernetes from version 1.22.1 to 1.22.2 by command:
+sudo kubeadm upgrade apply v1.22.2  (Answer: y)
+
+
+4. (Master2) Update kubeadm binary version from 1.22.1 to 1.22.2 by command:
+sudo su -
+apt-mark unhold kubeadm && \
+apt-get update && apt-get install -y kubeadm=1.22.2-00 && \
+apt-mark hold kubeadm
+kubeadm version
+exit
+
+
+5. (Master2) Start upgrade Kubernetes from version 1.22.1 to 1.22.2 by command:
+sudo kubeadm upgrade node 
+
+
+6. (Master3) Update kubeadm binary version from 1.22.1 to 1.22.2 by command:
+sudo su -
+apt-mark unhold kubeadm && \
+apt-get update && apt-get install -y kubeadm=1.22.2-00 && \
+apt-mark hold kubeadm
+kubeadm version
+exit
+
+
+7. (Master3) Start upgrade Kubernetes from version 1.22.1 to 1.22.2 by command:
+sudo kubeadm upgrade node 
+
+
+8. (Master1) Drain node for start upgrade kubelet and kubectl by command:
+kubectl get node
+kubectl drain <Master1> --ignore-daemonsets
+
+
+9. (Master1) Upgrade kubectl and kubelet binary by command:
+sudo su -
+apt-mark unhold kubelet kubectl && \
+apt-get update && apt-get install -y kubelet=1.22.2-00 kubectl=1.22.2-00 && \
+apt-mark hold kubelet kubectl
+kubectl version
+exit
+
+
+10. (Master1) Restart kubelet engine by command: 
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+
+
+11. (Master1) Uncordon node to bring back online by command:
+kubectl get node
+kubectl uncordon <Master1>
+
+
+12. (Master1) Check result of version again by command:
+kubectl get node -o wide
+
+
+13. (Master2) Drain node for start upgrade kubelet and kubectl by command:
+kubectl get node
+kubectl drain <Master2> --ignore-daemonsets
+
+
+14. (Master2) Upgrade kubectl and kubelet binary by command:
+sudo su -
+apt-mark unhold kubelet kubectl && \
+apt-get update && apt-get install -y kubelet=1.22.2-00 kubectl=1.22.2-00 && \
+apt-mark hold kubelet kubectl
+kubectl version
+exit
+
+
+15. (Master2) Restart kubelet engine by command: 
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+
+
+16. (Master2) Uncordon node to bring back online by command:
+kubectl get node
+kubectl uncordon <Master2>
+
+
+17. (Master3) Drain node for start upgrade kubelet and kubectl by command:
+kubectl get node
+kubectl drain <Master3> --ignore-daemonsets
+
+
+18. (Master3) Upgrade kubectl and kubelet binary by command:
+sudo su -
+apt-mark unhold kubelet kubectl && \
+apt-get update && apt-get install -y kubelet=1.22.2-00 kubectl=1.22.2-00 && \
+apt-mark hold kubelet kubectl
+kubectl version
+exit
+
+
+19. (Master3) Restart kubelet engine by command: 
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+
+
+20. (Master3) Uncordon node to bring back online by command:
+kubectl get node
+kubectl uncordon <Master3>
+
+
+===================================================================================================================================
+Part2: Upgade Worker Node
+===================================================================================================================================
+1. (Worker1,Worker2,Worker3) Update kubeadm binary version from 1.22.1 to 1.22.2 by command:
+sudo su -
+apt-mark unhold kubeadm && \
+apt-get update && apt-get install -y kubeadm=1.22.2-00 && \
+apt-mark hold kubeadm
+kubeadm version
+exit
+
+
+2. (Worker1,Worker2,Worker3) Start upgrade Kubernetes from version 1.22.1 to 1.22.2 by command:
+sudo kubeadm upgrade node 
+
+
+3. (Master1) Drain node for start upgrade kubelet and kubectl by command:
+kubectl get node
+kubectl drain <WorkerX> --ignore-daemonsets
+
+
+4. (Worker1,Worker2,Worker3) Upgrade kubectl and kubelet binary by command:
+sudo su -
+apt-mark unhold kubelet kubectl && \
+apt-get update && apt-get install -y kubelet=1.22.2-00 kubectl=1.22.2-00 && \
+apt-mark hold kubelet kubectl
+exit
+
+
+5. (Worker1,Worker2,Worker3) Restart kubelet engine by command:
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+
+
+6. (Master1) Uncordon node to bring back online by command:
+kubectl get node
+kubectl uncordon <WorkerX>
+
+7. (Master1) Check total upgrade result by command:
+kubectl get node -o wide

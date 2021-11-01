@@ -1,0 +1,29 @@
+====================================================
+Lab Description: (Check you excel sheet)
+ClusterName: XXXXX.labdockerthailand.com
+Ingress CNAME: XXXXX
+
+Machine name		            			            Roles:	        IP Address: (Private)		    IP Address: (Public)			Hostname
+Training_AdvanceDockerwithK8S_TeachetRKE_RKEClient	    Client    	    X.X.X.X					        X.X.X.X					        ip-10-21-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_TeachetRKE_RKEClient	    LoadBalance     X.X.X.X					        X.X.X.X							ip-10-21-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_TeachetRKE_RKEMaster1	    Master1		    X.X.X.X					        X.X.X.X							ip-10-21-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_TeachetRKE_RKEMaster2     Master2		    X.X.X.X					        X.X.X.X							ip-10-21-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_TeachetRKE_RKEMaster3   	Master3		    X.X.X.X					        X.X.X.X							ip-10-21-1-X.ap-southeast-1.compute.internal
+
+===================================================
+SSH command:
+(Client)        ssh -i "lab_gluster.pem" ubuntu@x.x.x.x   / scp -i "lab_gluster.pem" lab_gluster.pem ubuntu@x.x.x.x:/home/ubuntu/lab_gluster.pem 
+(Loadbalance)   ssh -i "lab_gluster.pem" ubuntu@x.x.x.x
+(Master1)       ssh -i "lab_gluster.pem" ubuntu@x.x.x.x
+(Master2)       ssh -i "lab_gluster.pem" ubuntu@x.x.x.x
+(Master3)       ssh -i "lab_gluster.pem" ubuntu@x.x.x.x
+
+===================================================
+Export variable:
+
+export PrivateIPMaster1=<privateip master1>
+export PrivateIPMaster2=<privateip master2>
+export PrivateIPMaster3=<privateip master3>
+export HostnameMaster1=<hostname master1>
+export HostnameMaster2=<hostname master2>
+export HostnameMaster3=<hostname master3>

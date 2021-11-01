@@ -1,0 +1,464 @@
+Instruction for Setup Kubernetes:
+1. Check LABSheet.xlsx for check information about your machine and your "docker_lab" (For MAC OS X) or "docker_lab.ppk" (For Windows)
+2. Check Document for connect to your AWS and Fill-in inventory (Shotnote)
+====================================================
+Lab Description: (Check you excel sheet)
+ClusterName: XXXXX
+CA-Cert-Hash: XXXXX
+Token: XXXXX
+CertificateKey: XXXXX
+Ingress CNAME: XXXXX
+
+Machine name		            			                  Roles:			IP Address: (Private)		      IP Address: (Public)			Hostname
+Training_AdvanceDockerwithK8S_StudentX_ClientLB	 	  Loadbalance	10.0.1.X					            X.X.X.X					          ip-10-0-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_StudentX_Master1	   	Master1			10.0.1.X					            X.X.X.X							      ip-10-0-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_StudentX_Master2      Master2		  10.0.1.X					            X.X.X.X							      ip-10-0-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_StudentX_Master3   	  Master3		  10.0.1.X					            X.X.X.X							      ip-10-0-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_StudentX_Worker1	   	Worker1  		10.0.1.X					            X.X.X.X							      ip-10-0-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_StudentX_Worker2      Worker2  		10.0.1.X					            X.X.X.X							      ip-10-0-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_StudentX_Worker3   	  Worker3  		10.0.1.X					            X.X.X.X							      ip-10-0-1-X.ap-southeast-1.compute.internal
+===================================================
+
+
+3. (All Node) Export variable relate for initial kubernetes cluster by command(Shotnote) (If session is disconnect need to rerun this step)
+  export ClusterName=<clustername>
+  export HostnameMaster1=<hostname master1>
+  export HostnameMaster2=<hostname master2>
+  export HostnameMaster3=<hostname master3>
+  export HostnameWorker1=<hostname worker1>
+  export HostnameWorker2=<hostname worker2>
+  export HostnameWorker3=<hostname worker3>
+  export PublicIPMaster1=<publicip master1>
+  export PublicIPMaster2=<publicip master2>
+  export PublicIPMaster3=<publicip master3>
+  export PublicIPWorker1=<publicip worker1>
+  export PublicIPWorker2=<publicip worker2>
+  export PublicIPWorker3=<publicip worker3>
+  export PrivateIPMaster1=<privateip master1>
+  export PrivateIPMaster2=<privateip master2>
+  export PrivateIPMaster3=<privateip master3>
+  export PrivateIPWorker1=<privateip worker1>
+  export PrivateIPWorker2=<privateip worker2>
+  export PrivateIPWorker3=<privateip worker3>
+  export HostnameLB=<hostname client/lb>
+  export PublicipLB=<publicip client/lb>
+  export PrivateipLB=<privateip client/lb>
+
+
+4. (Loadbalance/Client) Configure load balance and start HA Proxy by command:
+    <export variable>
+    cd ~/
+    git clone https://github.com/praparn/kubernetes-enterprise-202111.git
+    sed -i -e "s/<master1>/$PrivateIPMaster1/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/haproxy-k8s/haproxy.cfg
+    sed -i -e "s/<masterhostname1>/$HostnameMaster1/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/haproxy-k8s/haproxy.cfg
+    sed -i -e "s/<master2>/$PrivateIPMaster2/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/haproxy-k8s/haproxy.cfg
+    sed -i -e "s/<masterhostname2>/$HostnameMaster2/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/haproxy-k8s/haproxy.cfg
+    sed -i -e "s/<master3>/$PrivateIPMaster3/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/haproxy-k8s/haproxy.cfg
+    sed -i -e "s/<masterhostname3>/$HostnameMaster3/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/haproxy-k8s/haproxy.cfg
+    more ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/haproxy-k8s/haproxy.cfg
+    docker image build -t kuberneteslab-for-enterprise ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/haproxy-k8s/
+    docker container run -dt --name haproxy-kubernetes-enterprise -p 6443:6443 -p 80:80 -p 443:443 kuberneteslab-for-enterprise
+    docker container ls
+    docker container logs -f haproxy-kubernetes-enterprise
+
+
+5. (Master1) initial kubernetes master (Master1)
+   <export variable>
+  cd ~/
+  git clone https://github.com/praparn/kubernetes-enterprise-202111.git
+  sed -i -e "s/2.2.2.2/$HostnameLB/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-init.yaml
+  sed -i -e "s/hostnamemaster/$HostnameMaster1/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-init.yaml
+  sed -i -e "s/KubernetesClusterName/$ClusterName/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-init.yaml
+  more ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-init.yaml
+
+	sudo su -  #su as root
+  kubeadm init --upload-certs --config /home/ubuntu/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-init.yaml
+  exit
+  
+	*Remark: Need to record token Output
+    -------------------------------------------------
+    Token output:
+    -------------------------------------------------
+
+You can now join any number of control-plane nodes by copying certificate authorities
+and service account keys on each node and then running the following as root:
+
+  kubeadm join 10.0.1.67:6443 --token 1ogaw7.1dx1qg34qzi6ha5t \
+	--discovery-token-ca-cert-hash sha256:931d6c0f44e2c2558591845ffd95c7fb6ab47e687b83015c2a5b9b229940d786 \
+	--control-plane 
+
+Then you can join any number of worker nodes by running the following on each as root:
+
+kubeadm join 10.0.1.67:6443 --token 1ogaw7.1dx1qg34qzi6ha5t \
+	--discovery-token-ca-cert-hash sha256:931d6c0f44e2c2558591845ffd95c7fb6ab47e687b83015c2a5b9b229940d786 
+	-------------------------------------------------
+
+
+6. (Master1) Setup run cluster system by command (Regular User):
+	mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+	sudo chown $(id -u):$(id -g) $HOME/.kube/config
+	kubectl taint nodes --all node-role.kubernetes.io/master-
+
+
+7. (Master1) Install celium cli by command:
+  curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz{,.sha256sum}
+  sha256sum --check cilium-linux-amd64.tar.gz.sha256sum
+  sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
+  rm cilium-linux-amd64.tar.gz{,.sha256sum}
+  cilium status
+
+8. (Master1) Install cilium and check network plugin by command:
+  cilium install
+  cilium status
+
+9. (Master1) Test connectivity for network by command:
+  watch kubectl get pods --all-namespaces
+  cilium connectivity test
+--------------------------------------------------
+Example output:
+--------------------------------------------------
+ubuntu@ip-10-21-1-51:~$ cilium connectivity test
+ℹ️  Single-node environment detected, enabling single-node connectivity test
+ℹ️  Monitor aggregation detected, will skip some flow validation steps
+✨ [kubernetesforenterpriseteacher] Creating namespace for connectivity check...
+✨ [kubernetesforenterpriseteacher] Deploying echo-same-node service...
+✨ [kubernetesforenterpriseteacher] Deploying same-node deployment...
+✨ [kubernetesforenterpriseteacher] Deploying client deployment...
+✨ [kubernetesforenterpriseteacher] Deploying client2 deployment...
+⌛ [kubernetesforenterpriseteacher] Waiting for deployments [client client2 echo-same-node] to become ready...
+⌛ [kubernetesforenterpriseteacher] Waiting for deployments [] to become ready...
+⌛ [kubernetesforenterpriseteacher] Waiting for CiliumEndpoint for pod cilium-test/client-6488dcf5d4-mpmjm to appear...
+⌛ [kubernetesforenterpriseteacher] Waiting for CiliumEndpoint for pod cilium-test/client2-5998d566b4-jwbpf to appear...
+⌛ [kubernetesforenterpriseteacher] Waiting for CiliumEndpoint for pod cilium-test/echo-same-node-745bd5c77-h9rhd to appear...
+⌛ [kubernetesforenterpriseteacher] Waiting for Service cilium-test/echo-same-node to become ready...
+⌛ [kubernetesforenterpriseteacher] Waiting for NodePort 10.21.1.51:30688 (cilium-test/echo-same-node) to become ready...
+ℹ️  Skipping IPCache check
+⌛ [kubernetesforenterpriseteacher] Waiting for pod cilium-test/client2-5998d566b4-jwbpf to reach default/kubernetes service...
+⌛ [kubernetesforenterpriseteacher] Waiting for pod cilium-test/client-6488dcf5d4-mpmjm to reach default/kubernetes service...
+🔭 Enabling Hubble telescope...
+⚠️  Unable to contact Hubble Relay, disabling Hubble telescope and flow validation: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing dial tcp 127.0.0.1:4245: connect: connection refused"
+ℹ️  Expose Relay locally with:
+   cilium hubble enable
+   cilium status --wait
+   cilium hubble port-forward&
+🏃 Running tests...
+
+[=] Test [no-policies]
+....................
+[=] Test [allow-all]
+................
+[=] Test [client-ingress]
+..
+[=] Test [echo-ingress]
+..
+[=] Test [client-egress]
+..
+[=] Test [to-entities-world]
+......
+[=] Test [to-cidr-1111]
+....
+[=] Test [echo-ingress-l7]
+..
+[=] Test [client-egress-l7]
+........
+[=] Test [dns-only]
+........
+[=] Test [to-fqdns]
+......
+✅ All 11 tests (76 actions) successful, 0 tests skipped, 0 scenarios skipped.
+------------------------------------------------
+
+10. (Master1) Check IPVS mode on kube-proxy by command:
+  kubectl get pods -n kube-system
+  kubectl logs kube-proxy-<XXXX> -n kube-system
+
+========================================  Create Dashboard =====================================================================
+11. (Master1) Create Dashboard by command:
+	kubectl create namespace kubernetes-dashboard
+	kubectl create secret generic kubernetes-dashboard-certs --from-file=/home/ubuntu/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/cert -n kubernetes-dashboard
+	kubectl create -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_1_MultipleMasterKubeadm/dashboard-restrict.yml
+	
+
+12. (Master1) Check Bearer Token for access by command:
+	kubectl create -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_1_MultipleMasterKubeadm/user-restrict.yml
+	kubectl get secret -n kubernetes-dashboard
+	kubectl describe secret <admin-user-token-xxx> -n kubernetes-dashboard
+	*Remark: Record Token:
+	Ex:
+	------------------------------------------------------------------------------------
+ eyJhbGciOiJSUzI1NiIsImtpZCI6ImZ6RnRXNmI3STdLR3VRS2lLSjU0LV9wU2hySzVKS1JDdXczQ2NkTmU4eVkifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlcm5ldGVzLWRhc2hib2FyZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJhZG1pbi11c2VyLXRva2VuLTQ0Zm1nIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImFkbWluLXVzZXIiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiI3NmNjNWRiMC0yMWRlLTQyZTItOWMxNi1lYjExZDhkMTAyNmMiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZXJuZXRlcy1kYXNoYm9hcmQ6YWRtaW4tdXNlciJ9.Eoj6wFbMpeBbBYmnWx9IbeuHHDswsboWmtsmymFmRhAy0a8ivYs-yFYpOo1rIHte4EuKwGllIHbOIdyosWnpPXF_7q_yxhjTk1tfOPAzbyIFIzggasXJwIpTQReH7pu7cHE6dd4olJYtiklfI_UotM4VvvAGpL8xaWPRx8Am9laL11LJFccmiWaw9YjQlU1-1iMzSwVKWHkX990MGGNNr0hXSQSYPHYyjaiyU1RoSRjJyhwxXhV-nneB3qDqUjJiIVEtoAoIR0taQdrXYqxLiwdZGyfhsFJWNxlYhMGcLiLE-IH8TA_7kvTQg7pqJtkcfRiLUxmAajlrHNaiCEtPFQ
+ 	------------------------------------------------------------------------------------
+
+
+13. (Master1) Open Kubernetes's forward for operate:
+	kubectl get pods -n=kubernetes-dashboard
+	kubectl port-forward --address 0.0.0.0 pods/<kubernetes-dashboard-xxx> 8443:8443 -n=kubernetes-dashboard
+	(Ex: kubectl port-forward --address 0.0.0.0 pods/kubernetes-dashboard-7b5bf5d559-stwjc 8443:8443 -n=kubernetes-dashboard)
+
+	*Test by open browser: 
+	https://<Public IP>:8443
+========================================  Create Dashboard =====================================================================
+
+
+14. (Master2) Join master2 to Kubernetes farm as control-plan by command join:
+<export variable + include token/cert/sha256>
+cd ~/
+git clone https://github.com/praparn/kubernetes-enterprise-202111.git
+sed -i -e "s/hostnamelb/$HostnameLB/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join.yaml
+sed -i -e "s/token: tokenid/token: $tokenid/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join.yaml
+sed -i -e "s/sha256:cahash/$cacerhash/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join.yaml
+sed -i -e "s/name: hostname/name: $HostnameMaster2/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join.yaml
+sed -i -e "s/certkey/$certkey/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join.yaml
+more ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join.yaml
+
+sudo su -   #su as root
+kubeadm join --config /home/ubuntu/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join.yaml
+exit
+
+13. (Master2) Setup kubeadm coniguration and test by command: 
+	mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+	sudo chown $(id -u):$(id -g) $HOME/.kube/config
+	kubectl get node -o wide
+
+
+14. (Master3) Join master3 to Kubernetes farm as control-plan by command join:
+<export variable + include token/cert/sha256>
+cd ~/
+git clone https://github.com/praparn/kubernetes-enterprise-202111.git
+sed -i -e "s/hostnamelb/$HostnameLB/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join.yaml
+sed -i -e "s/token: tokenid/token: $tokenid/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join.yaml
+sed -i -e "s/sha256:cahash/$cacerhash/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join.yaml
+sed -i -e "s/name: hostname/name: $HostnameMaster3/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join.yaml
+sed -i -e "s/certkey/$certkey/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join.yaml
+more ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join.yaml
+
+sudo su -   #su as root
+kubeadm join --config /home/ubuntu/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join.yaml
+exit
+
+15. (Master3) Setup kubeadm coniguration and test by command: 
+	mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+	sudo chown $(id -u):$(id -g) $HOME/.kube/config
+	kubectl get node -o wide
+
+
+16. (Worker1) Join worker1 to Kubernetes farm as worker by command join:
+<export variable + include token/cert/sha256>
+cd ~/
+git clone https://github.com/praparn/kubernetes-enterprise-202111.git
+sed -i -e "s/hostnamelb/$HostnameLB/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join-worker.yaml
+sed -i -e "s/token: tokenid/token: $tokenid/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join-worker.yaml
+sed -i -e "s/sha256:cahash/$cacerhash/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join-worker.yaml
+sed -i -e "s/name: hostname/name: $HostnameWorker1/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join-worker.yaml
+more ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join-worker.yaml
+
+sudo su -   #su as root
+kubeadm join --config /home/ubuntu/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join-worker.yaml
+exit
+
+17. (Worker2) Join worker2 to Kubernetes farm as worker by command join:
+<export variable + include token/cert/sha256>
+cd ~/
+git clone https://github.com/praparn/kubernetes-enterprise-202111.git
+sed -i -e "s/hostnamelb/$HostnameLB/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join-worker.yaml
+sed -i -e "s/token: tokenid/token: $tokenid/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join-worker.yaml
+sed -i -e "s/sha256:cahash/$cacerhash/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join-worker.yaml
+sed -i -e "s/name: hostname/name: $HostnameWorker2/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join-worker.yaml
+more ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join-worker.yaml
+
+sudo su -   #su as root
+kubeadm join --config /home/ubuntu/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join-worker.yaml
+exit
+ 
+18. (Worker3) Join worker3 to Kubernetes farm as worker by command join:
+<export variable + include token/cert/sha256>
+cd ~/
+git clone https://github.com/praparn/kubernetes-enterprise-202111.git
+sed -i -e "s/hostnamelb/$HostnameLB/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join-worker.yaml
+sed -i -e "s/token: tokenid/token: $tokenid/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join-worker.yaml
+sed -i -e "s/sha256:cahash/$cacerhash/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join-worker.yaml
+sed -i -e "s/name: hostname/name: $HostnameWorker3/g" ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join-worker.yaml
+more ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join-worker.yaml
+
+sudo su -   #su as root
+kubeadm join --config /home/ubuntu/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/kubeadm-join-worker.yaml
+exit
+
+
+19. (Master1) Label all worker with role worker by command:
+kubectl get nodes
+kubectl label nodes $HostnameWorker1 node-role.kubernetes.io/worker=
+kubectl label nodes $HostnameWorker2 node-role.kubernetes.io/worker=
+kubectl label nodes $HostnameWorker3 node-role.kubernetes.io/worker=
+kubectl get nodes -o wide
+
+
+20. (Master) Create ingress set:
+	20.1 Create mandatory resource by command: 
+	kubectl apply -f ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/ingress-nginx/deploy/static/provider/baremetal/deploy.yaml 
+
+	*Remark: If you need to modified config. Edit this file first
+	more ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/ingress-nginx/deploy/static/provider/baremetal/deploy.yaml 
+========================================
+Example:
+[...]
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    helm.sh/chart: ingress-nginx-4.0.1
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 1.0.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: controller
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+data:
+[...]
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  labels:
+    helm.sh/chart: ingress-nginx-4.0.1
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 1.0.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: controller
+  name: nginx
+  namespace: ingress-nginx
+  #annotation:
+  #  ingressclass.kubernetes.io/is-default-class: true  #This for set default ingress controller on cluster
+spec:
+  controller: k8s.io/ingress-nginx
+[...]
+# Source: ingress-nginx/templates/controller-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+  labels:
+    helm.sh/chart: ingress-nginx-4.0.1
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 1.0.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: controller
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: http
+      appProtocol: http
+      nodePort: 30100
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: https
+      appProtocol: https
+      nodePort: 32100
+  selector:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/component: controller
+[...]
+========================================
+	20.2 Check service and pods by command: 
+	kubectl get svc -n=ingress-nginx
+	watch kubectl get pods -n=ingress-nginx		
+
+========================================
+Example:
+NAME                                 TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE
+ingress-nginx-controller             NodePort    10.110.87.52    <none>        80:30074/TCP,443:30761/TCP   9s
+ingress-nginx-controller-admission   ClusterIP   10.96.210.210   <none>        443/TCP                      9s
+
+NAME                                        READY   STATUS      RESTARTS   AGE
+ingress-nginx-admission-create-xlsq6        0/1     Completed   0          57s
+ingress-nginx-admission-patch-lzpvs         0/1     Completed   2          57s
+ingress-nginx-controller-67897c9494-gbznd   1/1     Running     0          58s
+========================================
+
+	20.3 Test open browser: (404 Not Found was expected):
+		curl http://$HostnameLB/
+
+21. Create Service/Pods/Deployment for webtest1 and webtest2 by command:
+	kubectl create -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_1_MultipleMasterKubeadm/webtest_deploy.yml
+	kubectl create -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_1_MultipleMasterKubeadm/webtest_deploy2.yml
+
+22. View service for connection by command:
+	kubectl get svc -o wide
+	-------------------------------
+	Example Result:
+	-------------------------------
+NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE   SELECTOR
+kubernetes   ClusterIP   10.96.0.1       <none>        443/TCP   23m   <none>
+webtest1     ClusterIP   10.103.22.4     <none>        80/TCP    7s    environment=development,module=WebServer,name=webtest1,owner=Praparn_L,version=1.0
+webtest2     ClusterIP   10.98.245.124   <none>        80/TCP    6s    environment=development,module=WebServer,name=webtest2,owner=Praparn_L,version=1.0
+	-------------------------------
+	
+23. Create ingress for access by command:
+	kubectl create -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_1_MultipleMasterKubeadm/ingress_webtest.yml
+	kubectl get ing -o wide
+	kubectl describe ing/ingresswebtest
+
+
+24. Add Hosts (/etc/hosts) or (c:\windows\system32\driver\etc\hosts) with minikube ip by command:
+	For Windows:
+		<PublicIP of LoadBalance> webtest1.kuberneteslabthailand.com webtest2.kuberneteslabthailand.com managementui.kuberneteslabthailand.com
+
+	For Mac:
+	echo "<PublicIP of LoadBalance> webtest1.kuberneteslabthailand.com webtest2.kuberneteslabthailand.com managementui.kuberneteslabthailand.com" | sudo tee -a /private/etc/hosts
+
+25. Test access website by browser:
+	http://webtest1.kuberneteslabthailand.com
+	http://webtest2.kuberneteslabthailand.com
+
+	*Remark: We can test with curl in lab machine by command:
+	curl http://$HostnameLB -H 'Host:webtest1.kuberneteslabthailand.com'
+	curl http://$HostnameLB -H 'Host:webtest2.kuberneteslabthailand.com'
+
+26. Delete Existing Ingress by command:
+	kubectl delete -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_1_MultipleMasterKubeadm/ingress_webtest.yml
+	kubectl delete -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_1_MultipleMasterKubeadm/webtest_deploy.yml
+	kubectl delete -f https://raw.githubusercontent.com/praparn/kubernetes-enterprise-202111/master/Workshop_1_1_MultipleMasterKubeadm/webtest_deploy2.yml
+
+
+27. (Master1) Create Metric Server:
+	cd ~/kubernetes-enterprise-202111/Workshop_1_1_MultipleMasterKubeadm/metrics-server/
+	kubectl apply -f components.yaml
+	kubectl get pods -n=kube-system
+	kubectl logs pods/<metrics's pods name> -n=kube-system
+  kubectl top nodes
+  cd ~
+
+28. (Local) WinSCP/SCP key file from local to LB/Client by command:
+  scp -i <key file> <key file(.pem)> ubuntu@<public ip of LB/Client>:/home/ubuntu/
+
+29. (LB/Client) Chmod key file to readonly by command:
+  chmod 400 <key file(.pem)>
+
+============================================================================================================================================================================
+  *Remark: In case you need to reinitial all this lab again please kindly following command below (*Warnning: This will reset all lab that you had been operate before)
+
+  (Master1-3, Worker1-3)
+  sudo su -
+  kubeadm reset
+	rm -rf /var/lib/etcd
+	rm -rf /home/ubuntu/.kube
+	ctr -n k8s.io i rm $(ctr -n k8s.io i ls -q)
+  sudo rm -rf /home/ubuntu/kubernetes-enterprise-202111/
+	reboot
+
+  (LB/Client)
+  docker system prune -af
+  sudo rm -rf /home/ubuntu/kubernetes-enterprise-202111/
+	reboot

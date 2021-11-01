@@ -1,0 +1,246 @@
+Instruction for RKE setup
+===================================================================================================================================
+Part0: Setup base cluster for RKE
+===================================================================================================================================
+
+1. Preparation Information for Rancher Setup
+====================================================
+Lab Description: (Check you excel sheet)
+ClusterName: XXXXX.labdockerthailand.com
+Ingress CNAME: XXXXX
+
+Machine name		            			                      Roles:	        IP Address: (Private)		      IP Address: (Public)			Hostname
+Training_AdvanceDockerwithK8S_TeachetRKE_RKEClient	    Client    	    X.X.X.X					              X.X.X.X					          ip-10-21-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_TeachetRKE_RKEClient	    LoadBalance     X.X.X.X					              X.X.X.X							      ip-10-21-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_TeachetRKE_RKEMaster1	    Master1		      X.X.X.X					              X.X.X.X							      ip-10-21-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_TeachetRKE_RKEMaster2     Master2		      X.X.X.X					              X.X.X.X							      ip-10-21-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_TeachetRKE_RKEMaster3   	Master3		      X.X.X.X					              X.X.X.X							      ip-10-21-1-X.ap-southeast-1.compute.internal
+
+===================================================
+SSH command:
+(Client)        ssh -i "lab_gluster.pem" ubuntu@x.x.x.x   / scp -i "lab_gluster.pem" lab_gluster.pem ubuntu@x.x.x.x:/home/ubuntu/lab_gluster.pem 
+(Loadbalance)   ssh -i "lab_gluster.pem" ubuntu@x.x.x.x
+(Master1)       ssh -i "lab_gluster.pem" ubuntu@x.x.x.x
+(Master2)       ssh -i "lab_gluster.pem" ubuntu@x.x.x.x
+(Master3)       ssh -i "lab_gluster.pem" ubuntu@x.x.x.x
+
+
+2. (Loadbalance) Configure load balance and start HA Proxy by command:
+  <export variable>
+    cd ~/
+    git clone https://github.com/praparn/kubernetes-enterprise-202111.git
+    sed -i -e "s/<master1>/$PrivateIPMaster1/g" ~/kubernetes-enterprise-202111/Workshop_6_KubernetesAutomate_RKE/haproxy-k8s/haproxy.cfg
+    sed -i -e "s/<masterhostname1>/$HostnameMaster1/g" ~/kubernetes-enterprise-202111/Workshop_6_KubernetesAutomate_RKE/haproxy-k8s/haproxy.cfg
+    sed -i -e "s/<master2>/$PrivateIPMaster2/g" ~/kubernetes-enterprise-202111/Workshop_6_KubernetesAutomate_RKE/haproxy-k8s/haproxy.cfg
+    sed -i -e "s/<masterhostname2>/$HostnameMaster2/g" ~/kubernetes-enterprise-202111/Workshop_6_KubernetesAutomate_RKE/haproxy-k8s/haproxy.cfg
+    sed -i -e "s/<master3>/$PrivateIPMaster3/g" ~/kubernetes-enterprise-202111/Workshop_6_KubernetesAutomate_RKE/haproxy-k8s/haproxy.cfg
+    sed -i -e "s/<masterhostname3>/$HostnameMaster3/g" ~/kubernetes-enterprise-202111/Workshop_6_KubernetesAutomate_RKE/haproxy-k8s/haproxy.cfg
+    more ~/kubernetes-enterprise-202111/Workshop_6_KubernetesAutomate_RKE/haproxy-k8s/haproxy.cfg
+    docker image build -t kuberneteslab-for-enterprise-rke ~/kubernetes-enterprise-202111/Workshop_6_KubernetesAutomate_RKE/haproxy-k8s/
+    docker container run -dt --name haproxy-kubernetes-enterprise-rke -p 80:80 -p 443:443 kuberneteslab-for-enterprise-rke
+    docker container ls
+    docker container logs -f haproxy-kubernetes-enterprise-rke
+
+
+3. (Client) Check kubectl and rke binary by command:
+cd ~
+kubectl version --client
+./rke version
+
+4. (Client) Generate public-key
+ssh-keygen -t rsa -b 4096 ==> Press enter 3 times
+--------------------------------------------------
+Example output:
+--------------------------------------------------
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/ubuntu/.ssh/id_rsa): 
+Enter passphrase (empty for no passphrase): 
+Enter same passphrase again: 
+Your identification has been saved in /home/ubuntu/.ssh/id_rsa.
+Your public key has been saved in /home/ubuntu/.ssh/id_rsa.pub.
+The key fingerprint is:
+SHA256:oMLhga3tBggNqBqV6SOzRRM63myasPFNaB6B+tMHNeI ubuntu@ip-10-21-2-23
+The key's randomart image is:
++---[RSA 4096]----+
+|o .+             |
+|.B*              |
+|B+*.. +          |
+|X*** + o         |
+|OBO=E   S        |
+|+X+* .           |
+|.oB o .          |
+| . . .           |
+|                 |
++----[SHA256]-----+
+--------------------------------------------------
+
+5. (Local ==> Client) Copy ssh authorize for scp file or winscp
+scp -i lab_gluster.pem ./lab_gluster.pem ubuntu@xxxx:/home/ubuntu
+
+6. (Client) SCP file public-key to all RKE Master
+<export variable>
+cd ~
+chmod 400 lab_gluster.pem
+cat ~/.ssh/id_rsa.pub | ssh -i lab_gluster.pem ubuntu@$HostnameMaster1 "cat >> ~/.ssh/authorized_keys"        #(Master-1)
+ssh -A $HostnameMaster1                                                                                       #(Master-1)
+cat ~/.ssh/id_rsa.pub | ssh -i lab_gluster.pem ubuntu@$HostnameMaster2 "cat >> ~/.ssh/authorized_keys"        #(Master-2)
+ssh -A $HostnameMaster2                                                                                       #(Master-2)
+cat ~/.ssh/id_rsa.pub | ssh -i lab_gluster.pem ubuntu@$HostnameMaster3 "cat >> ~/.ssh/authorized_keys"        #(Master-3)
+ssh -A $HostnameMaster3                                                                                       #(Master-3)
+
+7. (Client) SSH to RKE master and install docker container runtime
+sudo apt-get update && sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+echo \
+  "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update && sudo apt-get -y install docker-ce docker-ce-cli containerd.io && sudo usermod -a -G docker ubuntu && sudo reboot
+docker info (After reboot)
+
+8. (RKE Client) Configure RKE:
+/home/ubuntu/rke/rke config  ==> input information of Master (1-3)
+- SSH Private Key Path of host (Master1-3) [none]: ~/.ssh/id_rsa
+- Network Plugin Type (flannel, calico, weave, canal, aci) [canal]: calico
+- SSH User of host (Master1-3) [ubuntu]: rancheruser
+#############################################################################################################
+[+] Cluster Level SSH Private Key Path [~/.ssh/id_rsa]: 
+[+] Number of Hosts [1]: 3
+[+] SSH Address of host (1) [none]: 10.21.2.188
+[+] SSH Port of host (1) [22]: 
+[+] SSH Private Key Path of host (10.21.2.188) [none]: ~/.ssh/id_rsa
+[+] SSH User of host (10.21.2.188) [ubuntu]: ubuntu
+[+] Is host (10.21.2.188) a Control Plane host (y/n)? [y]: y
+[+] Is host (10.21.2.188) a Worker host (y/n)? [n]: y
+[+] Is host (10.21.2.188) an etcd host (y/n)? [n]: y
+[+] Override Hostname of host (10.21.2.188) [none]: 
+[+] Internal IP of host (10.21.2.188) [none]: 
+[+] Docker socket path on host (10.21.2.188) [/var/run/docker.sock]: 
+[+] SSH Address of host (2) [none]: 10.21.2.203
+[+] SSH Port of host (2) [22]: 
+[+] SSH Private Key Path of host (10.21.2.203) [none]: ~/.ssh/id_rsa
+[+] SSH User of host (10.21.2.203) [ubuntu]: ubuntu
+[+] Is host (10.21.2.203) a Control Plane host (y/n)? [y]: y
+[+] Is host (10.21.2.203) a Worker host (y/n)? [n]: y
+[+] Is host (10.21.2.203) an etcd host (y/n)? [n]: y
+[+] Override Hostname of host (10.21.2.203) [none]: 
+[+] Internal IP of host (10.21.2.203) [none]: 
+[+] Docker socket path on host (10.21.2.203) [/var/run/docker.sock]: 
+[+] SSH Address of host (3) [none]: 10.21.2.116
+[+] SSH Port of host (3) [22]: 
+[+] SSH Private Key Path of host (10.21.2.116) [none]: ~/.ssh/id_rsa
+[+] SSH User of host (10.21.2.116) [ubuntu]: ubuntu
+[+] Is host (10.21.2.116) a Control Plane host (y/n)? [y]: y
+[+] Is host (10.21.2.116) a Worker host (y/n)? [n]: y
+[+] Is host (10.21.2.116) an etcd host (y/n)? [n]: y
+[+] Override Hostname of host (10.21.2.116) [none]: 
+[+] Internal IP of host (10.21.2.116) [none]: 
+[+] Docker socket path on host (10.21.2.116) [/var/run/docker.sock]: 
+[+] Network Plugin Type (flannel, calico, weave, canal, aci) [canal]: calico
+[+] Authentication Strategy [x509]: 
+[+] Authorization Mode (rbac, none) [rbac]: 
+[+] Kubernetes Docker image [rancher/hyperkube:v1.20.9-rancher1]: 
+[+] Cluster domain [cluster.local]: rancherdemo2021.local
+[+] Service Cluster IP Range [10.43.0.0/16]: 
+[+] Enable PodSecurityPolicy [n]: 
+[+] Cluster Network CIDR [10.42.0.0/16]: 
+[+] Cluster DNS Service IP [10.43.0.10]: 
+[+] Add addon manifest URLs or YAML files [no]:
+#############################################################################################################
+
+9. (RKE Client) Configure RKE:
+/home/ubuntu/rke/rke config  ==> input information of Master (1-3)
+- SSH Private Key Path of host (Master1-3) [none]: ~/.ssh/id_rsa
+- Network Plugin Type (flannel, calico, weave, canal, aci) [canal]: calico
+- SSH User of host (Master1-3) [u
+
+10. (RKE Client) Bring Up RKE Farm:
+/home/ubuntu/rke/rke up
+
+11. (RKE Client) Copy credential:
+cd ~/ && mkdir .kube
+cp ~/rke/kube_config_cluster.yml ~/.kube/config
+kubectl cluster-info
+kubectl get pod -A
+
+12. (RKE Client) Install Helm Client
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh
+
+13. (RKE Client) Install Certiicate Autorotation
+helm repo add cert-manager https://charts.jetstack.io
+helm install my-cert-manager --namespace cert-manager --version v1.5.2 jetstack/cert-manager --set installCRDs=true
+helm repo update
+
+14. (RKE Client) Add Helm for Rancher
+helm repo add rancher-stable https://releases.rancher.com/server-charts/stable
+helm repo update 
+helm install rancher rancher-stable/rancher \
+--create-namespace --namespace cattle-system \
+--set hostname=<name of rancher farm>.xxx.xxx --set ingress.tls.source=rancher
+#### Case rollback: helm uninstall rancher -n=cattle-system
+
+15. (RKE Client) Check status
+kubectl -n cattle-system rollout status deploy/rancher
+kubectl -n cattle-system get deploy rancher
+kubectl get ing -n=cattle-system
+
+16. (AWS) Create NLB load balance for all RKE server
+NLB: RKE-DEMO-NLB
+Target group:
+ RKE-DEMO-HTTP ==> TCP ==> 80 to Master (1-3)(10.21.2.188,10.21.2.203,10.21.2.116)
+ RKE-DEMO-HTTPS ==> TCP ==> 443 to Master (1-3)(10.21.2.188,10.21.2.203,10.21.2.116)
+
+Record NLB:RKE-DEMO-NLB-37bdda9c5008ba63.elb.ap-southeast-1.amazonaws.com
+
+17. (Local) Add hosts or register dns
+####Option1: Register DNS ####
+Add DNS for NLB endpoint ==> <name of rancher farm>.xxx.xxx ==> CNAME of Rancher
+
+####Option2: Resolve CNAME to IP and Add IP Address to /etc/hosts
+nslookup CNAME of Rancher ==> Record IP Address
+add to /etc/hosts ==> <ip address>   <name of rancher farm>.xxx.xxx 
+
+18. (Local)
+Open browser for access rancher:
+  rancherdemo2021.com
+
+##############################################################################################################################################################
+# Setup K8S Farm                                                                                                                                   #
+##############################################################################################################################################################
+-----------------------------------------------------------------
+Step0 (Rancher Web GUI): Prepare information as below
+K8S Farm Name: xxxxxxxx
+Region: ap-southeast-1 (singapore)
+subnet_private_1a = "xxxxxxxx"
+subnet_private_1b = "xxxxxxxx"
+subnet_private_1c = "xxxxxxxx"
+vpc_cidr = "X.X.X.X/XX"
+vpc_id = "vpc-xxxxxxxxxxxxxxx"
+-----------------------------------------------------------------
+Instance:
+secgroup_kubernetes = "sg-xxxxxxxx"
+iaminstanceprofile_ec2 = "xxxxxxxx"
+iampolicy_ec2 = "xxxxxxxx"
+iamrole_ec2 = "xxxxxxxx"
+master_ec2_type = "t3a.small"/boot disk: 30 GB (3 units)
+worker_ec2_type = "t3a.small"/boot disk: 30 GB (3 units)
+Tags:
+Module = Kubernetes
+Region = ap-southeast-1
+Name = kubernetes-xxxx
+Categories = compute
+ 
+-----------------------------------------------------------------
+S3:
+scblf_iam_s3_name: s3-XXXXXXXX
+scblf_s3_arn: arn:aws:s3:::s3-XXXXXXXX
+scblf_s3_domainname: s3-XXXXXXXX.s3.amazonaws.com
+scblf_s3_id: s3-XXXXXXXX
+scblf_s3_region: ap-southeast-1
+scblf_s3_domainname: s3-XXXXXXXX.s3.amazonaws.com
+
+##############################################################################################################################################################
+Step1 (Rancher Web GUI): Create Cloud Credential
+
+Step2 (Rancher Web GUI): 

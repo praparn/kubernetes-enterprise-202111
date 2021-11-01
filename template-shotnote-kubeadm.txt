@@ -1,0 +1,84 @@
+====================================================
+Lab Description: (Check you excel sheet)
+ClusterName: XXXXX
+CA-Cert-Hash: XXXXX
+Token: XXXXX
+CertificateKey: XXXXX
+Ingress CNAME: XXXXX
+
+Machine name		            			                      Roles:	        IP Address: (Private)		      IP Address: (Public)			Hostname
+Training_AdvanceDockerwithK8S_StudentX_Client	   	      Loadbalance	    X.X.X.X					              X.X.X.X					          ip-10-21-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_StudentX_Master1	   	    Master1		      X.X.X.X					              X.X.X.X							      ip-10-21-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_StudentX_Master2          Master2		      X.X.X.X					              X.X.X.X							      ip-10-21-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_StudentX_Master3   	      Master3		      X.X.X.X					              X.X.X.X							      ip-10-21-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_StudentX_Worker1	   	    Worker1  		    X.X.X.X					              X.X.X.X							      ip-10-21-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_StudentX_Worker2          Worker2  		    X.X.X.X					              X.X.X.X							      ip-10-21-1-X.ap-southeast-1.compute.internal
+Training_AdvanceDockerwithK8S_StudentX_Worker3   	      Worker3  		    X.X.X.X					              X.X.X.X							      ip-10-21-1-X.ap-southeast-1.compute.internal
+
+===================================================
+SSH command:
+(Loadbalance)   ssh -i "lab_gluster.pem" ubuntu@x.x.x.x
+(Master1)       ssh -i "lab_gluster.pem" ubuntu@x.x.x.x
+(Master2)       ssh -i "lab_gluster.pem" ubuntu@x.x.x.x
+(Master3)       ssh -i "lab_gluster.pem" ubuntu@x.x.x.x
+(Worker1)       ssh -i "lab_gluster.pem" ubuntu@x.x.x.x
+(Worker2)       ssh -i "lab_gluster.pem" ubuntu@x.x.x.x
+(Worker3)       ssh -i "lab_gluster.pem" ubuntu@x.x.x.x
+
+===================================================
+Export variable:
+  export ClusterName=<clustername>
+  export HostnameMaster1=<hostname master1>
+  export HostnameMaster2=<hostname master2>
+  export HostnameMaster3=<hostname master3>
+  export HostnameWorker1=<hostname worker1>
+  export HostnameWorker2=<hostname worker2>
+  export HostnameWorker3=<hostname worker3>
+  export PublicIPMaster1=<publicip master1>
+  export PublicIPMaster2=<publicip master2>
+  export PublicIPMaster3=<publicip master3>
+  export PublicIPWorker1=<publicip worker1>
+  export PublicIPWorker2=<publicip worker2>
+  export PublicIPWorker3=<publicip worker3>
+  export PrivateIPMaster1=<privateip master1>
+  export PrivateIPMaster2=<privateip master2>
+  export PrivateIPMaster3=<privateip master3>
+  export PrivateIPWorker1=<privateip worker1>
+  export PrivateIPWorker2=<privateip worker2>
+  export PrivateIPWorker3=<privateip worker3>
+  export HostnameLB=<hostname client/lb>
+  export PublicipLB=<publicip client/lb>
+  export PrivateipLB=<privateip client/lb>
+
+export tokenid=<Not export this until finished init master1>
+export cacerhash=<Not export this until finished init master1>
+export certkey=<Not export this until finished init master1>
+==================================================
+Join command:
+You should now deploy a pod network to the cluster.
+Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+You can now join any number of the control-plane node running the following command on each as root:
+
+  kubeadm join ip-X-X-X-X.ap-southeast-1.compute.internal:6443 --token XXXXXX.XXXXXX \
+	--discovery-token-ca-cert-hash sha256:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX \
+	--control-plane --certificate-key XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+Please note that the certificate-key gives access to cluster sensitive data, keep it secret!
+As a safeguard, uploaded-certs will be deleted in two hours; If necessary, you can use
+"kubeadm init phase upload-certs --upload-certs" to reload certs afterward.
+
+Then you can join any number of worker nodes by running the following on each as root:
+
+kubeadm join ip-10-21-1-22.ap-southeast-1.compute.internal:6443 --token XXXXXX.XXXXXX \
+	--discovery-token-ca-cert-hash sha256:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+
+=================================================
+Secret Dashboard:
+Data
+====
+ca.crt:     1099 bytes
+namespace:  20 bytes
+token:      XXXXXXXXX

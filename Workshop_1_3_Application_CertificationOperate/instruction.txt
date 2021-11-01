@@ -1,0 +1,58 @@
+Instruction for Certificate Operation:
+===================================================================================================================================
+Part1: Verification expiration period
+===================================================================================================================================
+1. (Master1) Check existing certificate path by command:
+  ls -lh /etc/kubernetes/pki
+-----------------------------------------------------------------------------------------------------------------------------------
+Example output:
+-rw-r--r-- 1 root root 1.2K Oct 13 00:25 apiserver-etcd-client.crt
+-rw------- 1 root root 1.7K Oct 13 00:25 apiserver-etcd-client.key
+-rw-r--r-- 1 root root 1.2K Oct 13 00:25 apiserver-kubelet-client.crt
+-rw------- 1 root root 1.7K Oct 13 00:25 apiserver-kubelet-client.key
+-rw-r--r-- 1 root root 1.4K Oct 13 00:25 apiserver.crt
+-rw------- 1 root root 1.7K Oct 13 00:25 apiserver.key
+-rw-r--r-- 1 root root 1.1K Oct 12 23:47 ca.crt
+-rw------- 1 root root 1.7K Oct 12 23:47 ca.key
+drwxr-xr-x 2 root root 4.0K Oct 12 23:47 etcd
+-rw-r--r-- 1 root root 1.1K Oct 12 23:47 front-proxy-ca.crt
+-rw------- 1 root root 1.7K Oct 12 23:47 front-proxy-ca.key
+-rw-r--r-- 1 root root 1.1K Oct 13 00:25 front-proxy-client.crt
+-rw------- 1 root root 1.7K Oct 13 00:25 front-proxy-client.key
+-rw------- 1 root root 1.7K Oct 12 23:47 sa.key
+-rw------- 1 root root  451 Oct 12 23:47 sa.pub
+-----------------------------------------------------------------------------------------------------------------------------------
+
+
+2. (Master1, Master2, Master3) Check all certificate expiration by command:
+sudo kubeadm certs check-expiration   ==> Record expiration period
+-----------------------------------------------------------------------------------------------------------------------------------
+Example output:
+CERTIFICATE                EXPIRES                  RESIDUAL TIME   CERTIFICATE AUTHORITY   EXTERNALLY MANAGED
+admin.conf                 Oct 12, 2022 17:25 UTC   364d                                    no      
+apiserver                  Oct 12, 2022 17:25 UTC   364d            ca                      no      
+apiserver-etcd-client      Oct 12, 2022 17:25 UTC   364d            etcd-ca                 no      
+apiserver-kubelet-client   Oct 12, 2022 17:25 UTC   364d            ca                      no      
+controller-manager.conf    Oct 12, 2022 17:25 UTC   364d                                    no      
+etcd-healthcheck-client    Oct 12, 2022 17:25 UTC   364d            etcd-ca                 no      
+etcd-peer                  Oct 12, 2022 17:25 UTC   364d            etcd-ca                 no      
+etcd-server                Oct 12, 2022 17:25 UTC   364d            etcd-ca                 no      
+front-proxy-client         Oct 12, 2022 17:25 UTC   364d            front-proxy-ca          no      
+scheduler.conf             Oct 12, 2022 17:25 UTC   364d                                    no      
+
+CERTIFICATE AUTHORITY   EXPIRES                  RESIDUAL TIME   EXTERNALLY MANAGED
+ca                      Oct 10, 2031 16:47 UTC   9y              no      
+etcd-ca                 Oct 10, 2031 16:47 UTC   9y              no      
+front-proxy-ca          Oct 10, 2031 16:47 UTC   9y              no 
+-----------------------------------------------------------------------------------------------------------------------------------
+3. (Master1) check utility for renew kubernetes certificate by command:
+sudo kubeadm certs renew --help
+
+4. (Master1, Master2, Master3) Renew certification by command:
+sudo kubeadm certs renew all && sudo kubeadm certs check-expiration 
+
+5. (Master1, Master2, Master3) Restart master node/control-plain pods one-by-one and check cluster running by command:
+sudo reboot   (This step will take around 5 min per node)
+
+6. (Any Master Node) Watch kubernetes control-plan status by command:
+watch kubectl get nodes
